@@ -1,1 +1,182 @@
-# Mon-espace.
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6fb">
+  <title>Mon espace</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6fb;
+      --text: #172033;
+      --muted: #697386;
+      --card: #ffffff;
+      --border: #e7eaf1;
+      --shadow: 0 8px 24px rgba(24, 39, 75, .07);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      min-height: 100vh;
+    }
+    .page {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: max(24px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+    }
+    .hero {
+      padding: 24px 4px 22px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #5968a8;
+      background: #e9edff;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 16px 0 7px;
+      font-size: clamp(32px, 8vw, 42px);
+      line-height: 1.08;
+      letter-spacing: -.04em;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .app {
+      min-height: 158px;
+      padding: 17px 15px 15px;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: inherit;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .app:active { transform: scale(.985); }
+    .icon {
+      width: 47px;
+      height: 47px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      font-size: 25px;
+      margin-bottom: 15px;
+    }
+    .blue { background: #e7f0ff; }
+    .green { background: #e5f8eb; }
+    .purple { background: #f0eaff; }
+    .amber { background: #fff1d9; }
+    .teal { background: #def7f5; }
+    .red { background: #ffe8e6; }
+    .app-title {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .app-desc {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .arrow {
+      margin-top: auto;
+      padding-top: 12px;
+      color: #7b8497;
+      font-size: 18px;
+      align-self: flex-end;
+    }
+    .footer {
+      text-align: center;
+      color: #8a92a2;
+      font-size: 12px;
+      padding: 24px 0 2px;
+    }
+    @media (min-width: 620px) {
+      .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .app { min-height: 176px; padding: 19px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">🏠 Ton tableau de bord</div>
+      <h1>Mon espace</h1>
+      <p class="subtitle">Toutes tes applications au même endroit. Choisis celle que tu veux ouvrir.</p>
+    </header>
+
+    <nav class="grid" aria-label="Mes applications">
+      <a class="app" href="https://dplayvision.github.io/Mes-paiements-/">
+        <span class="icon blue" aria-hidden="true">💳</span>
+        <span class="app-title">Mes paiements</span>
+        <span class="app-desc">Paiements, domiciliations et synthèses</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="app" href="https://dplayvision.github.io/Mes-paiements-/contrats.html">
+        <span class="icon purple" aria-hidden="true">📄</span>
+        <span class="app-title">Mes contrats</span>
+        <span class="app-desc">Contrats, échéances et documents</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="app" href="https://dplayvision.github.io/Mes-conges-et-horaires-/">
+        <span class="icon green" aria-hidden="true">🗓️</span>
+        <span class="app-title">Congés &amp; Horaires</span>
+        <span class="app-desc">Congés, horaires et calendrier</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="app" href="https://dplayvision.github.io/Mes-utilisateurs/">
+        <span class="icon amber" aria-hidden="true">🔐</span>
+        <span class="app-title">Mes accès</span>
+        <span class="app-desc">Tes accès enregistrés</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="app" href="https://dplayvision.github.io/scan-boulot-/">
+        <span class="icon teal" aria-hidden="true">📷</span>
+        <span class="app-title">Scan Châssis</span>
+        <span class="app-desc">Scanner et retrouver l’historique</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="app" href="https://dplayvision.github.io/Mon-arlarm/">
+        <span class="icon red" aria-hidden="true">🚨</span>
+        <span class="app-title">Mon alarme</span>
+        <span class="app-desc">Accéder à ton application d’alarme</span>
+        <span class="arrow" aria-hidden="true">↗</span>
+      </a>
+    </nav>
+
+    <footer class="footer">Mon espace · Accès rapide à tes applications</footer>
+  </main>
+</body>
+</html>
+
