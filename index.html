@@ -85,11 +85,26 @@
         loginBtn.disabled = true;
         try {
           const provider = new firebase.auth.GoogleAuthProvider();
-          // Essaye d'abord la fenêtre de connexion; si le navigateur la bloque,
-          // affiche une erreur lisible plutôt que de boucler sur la page de connexion.
           await auth.signInWithPopup(provider);
+          statusEl.textContent = 'Compte Google connecté. Ouverture de ton espace…';
         } catch (e) {
-          statusEl.textContent = 'Connexion impossible : ' + (e.message || e.code || 'erreur inconnue');
+          console.error('Connexion Google Mon espace:', e);
+          if (e.code === 'auth/popup-blocked' ||
+              e.code === 'auth/popup-closed-by-user' ||
+              e.code === 'auth/cancelled-popup-request' ||
+              e.code === 'auth/operation-not-supported-in-this-environment') {
+            try {
+              const provider = new firebase.auth.GoogleAuthProvider();
+              statusEl.textContent = 'Redirection vers Google…';
+              await auth.signInWithRedirect(provider);
+              return;
+            } catch (redirectError) {
+              console.error('Redirection Google Mon espace:', redirectError);
+              statusEl.textContent = 'Connexion impossible : ' + (redirectError.message || redirectError.code || 'erreur inconnue');
+            }
+          } else {
+            statusEl.textContent = 'Connexion impossible : ' + (e.message || e.code || 'erreur inconnue');
+          }
           loginBtn.disabled = false;
         }
       });
@@ -97,6 +112,22 @@
       document.getElementById('logoutBtn').addEventListener('click', async () => {
         try { await auth.signOut(); }
         catch (e) { statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code); }
+      });
+
+      // Recover the redirect result after returning from Google.
+      auth.getRedirectResult().then(result => {
+        if (result && result.user) {
+          statusEl.textContent = 'Connexion réussie. Ton espace est déverrouillé.';
+        }
+      }).catch(e => {
+        statusEl.textContent = 'Erreur de connexion : ' + (e.message || e.code || 'réessaie');
+        loginBtn.disabled = false;
+      });
+
+      auth.getRedirectResult().catch(e => {
+        console.error('Résultat de redirection Google Mon espace:', e);
+        statusEl.textContent = 'Retour Google impossible : ' + (e.message || e.code || 'erreur inconnue');
+        loginBtn.disabled = false;
       });
 
       auth.onAuthStateChanged(user => {
