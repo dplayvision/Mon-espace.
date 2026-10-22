@@ -23,9 +23,17 @@
     .app-desc { margin-top:5px; color:var(--muted); font-size:12px; line-height:1.4; }
     .arrow { margin-top:auto; padding-top:12px; color:#7b8497; font-size:18px; align-self:flex-end; }
     .footer { text-align:center; color:#8a92a2; font-size:12px; padding:24px 0 2px; }
+    .auth { background:white; border:1px solid var(--border); box-shadow:var(--shadow); border-radius:20px; padding:20px; margin:12px 0 20px; }
+    .btn { border:0; border-radius:12px; background:#243b80; color:white; padding:13px 16px; font-size:15px; font-weight:750; width:100%; cursor:pointer; }
+    .btn.secondary { background:#e9edff; color:#243b80; width:auto; padding:9px 13px; font-size:13px; }
+    .authline { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .status { font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 13px; overflow-wrap:anywhere; }
+    [hidden] { display:none !important; }
     @media (min-width:620px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .app { min-height:176px; padding:19px; } }
     @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
   <main class="page">
@@ -34,27 +42,75 @@
       <h1>Mon espace</h1>
       <p class="subtitle">Toutes tes applications au même endroit. Choisis celle que tu veux ouvrir.</p>
     </header>
-    <nav class="grid" aria-label="Mes applications">
-      <a class="app" href="https://dplayvision.github.io/Mes-paiements-/">
-        <span class="icon blue" aria-hidden="true">💳</span><span class="app-title">Mes paiements</span><span class="app-desc">Paiements, domiciliations et synthèses</span><span class="arrow" aria-hidden="true">↗</span>
-      </a>
-      <a class="app" href="https://dplayvision.github.io/Mes-paiements-/contrats.html">
-        <span class="icon purple" aria-hidden="true">📄</span><span class="app-title">Mes contrats</span><span class="app-desc">Contrats, échéances et documents</span><span class="arrow" aria-hidden="true">↗</span>
-      </a>
-      <a class="app" href="https://dplayvision.github.io/Mes-conges-et-horaires-/">
-        <span class="icon green" aria-hidden="true">🗓️</span><span class="app-title">Congés &amp; Horaires</span><span class="app-desc">Congés, horaires et calendrier</span><span class="arrow" aria-hidden="true">↗</span>
-      </a>
-      <a class="app" href="https://dplayvision.github.io/Mes-utilisateurs/">
-        <span class="icon amber" aria-hidden="true">🔐</span><span class="app-title">Mes accès</span><span class="app-desc">Tes accès enregistrés</span><span class="arrow" aria-hidden="true">↗</span>
-      </a>
-      <a class="app" href="https://dplayvision.github.io/Mon-arlarm/">
-        <span class="icon red" aria-hidden="true">🚨</span><span class="app-title">Mon alarme</span><span class="app-desc">Accéder à ton application d’alarme</span><span class="arrow" aria-hidden="true">↗</span>
-      </a>
-      <a class="app" href="https://dplayvision.github.io/test/">
-        <span class="icon teal" aria-hidden="true">🔎</span><span class="app-title">Scan Châssis</span><span class="app-desc">Ouvrir l’application de scan</span><span class="arrow" aria-hidden="true">↗</span>
-      </a>
+    <section class="auth" aria-label="Connexion Google">
+      <p id="authStatus" class="status">Connecte-toi avec ton compte Google pour ouvrir ton espace.</p>
+      <button id="loginBtn" class="btn" type="button">Continuer avec Google</button>
+      <div id="signedIn" class="authline" hidden>
+        <span id="userEmail" class="status" style="margin:0"></span>
+        <button id="logoutBtn" class="btn secondary" type="button">Se déconnecter</button>
+      </div>
+    </section>
+    <nav id="apps" class="grid" aria-label="Mes applications" hidden>
+      <a class="app" href="https://dplayvision.github.io/Mes-paiements-/"><span class="icon blue" aria-hidden="true">💳</span><span class="app-title">Mes paiements</span><span class="app-desc">Paiements, domiciliations et synthèses</span><span class="arrow" aria-hidden="true">↗</span></a>
+      <a class="app" href="https://dplayvision.github.io/Mes-paiements-/contrats.html"><span class="icon purple" aria-hidden="true">📄</span><span class="app-title">Mes contrats</span><span class="app-desc">Contrats, échéances et documents</span><span class="arrow" aria-hidden="true">↗</span></a>
+      <a class="app" href="https://dplayvision.github.io/Mes-conges-et-horaires-/"><span class="icon green" aria-hidden="true">🗓️</span><span class="app-title">Congés &amp; Horaires</span><span class="app-desc">Congés, horaires et calendrier</span><span class="arrow" aria-hidden="true">↗</span></a>
+      <a class="app" href="https://dplayvision.github.io/Mes-utilisateurs/"><span class="icon amber" aria-hidden="true">🔐</span><span class="app-title">Mes accès</span><span class="app-desc">Tes accès enregistrés</span><span class="arrow" aria-hidden="true">↗</span></a>
+      <a class="app" href="https://dplayvision.github.io/Mon-arlarm/"><span class="icon red" aria-hidden="true">🚨</span><span class="app-title">Mon alarme</span><span class="app-desc">Accéder à ton application d’alarme</span><span class="arrow" aria-hidden="true">↗</span></a>
+      <a class="app" href="https://dplayvision.github.io/test/"><span class="icon teal" aria-hidden="true">🔎</span><span class="app-title">Scan Châssis</span><span class="app-desc">Ouvrir l’application de scan</span><span class="arrow" aria-hidden="true">↗</span></a>
     </nav>
     <footer class="footer">Mon espace · Accès rapide à tes applications</footer>
   </main>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD8FfX9uljCWJi1fg3hE5poocXOCAH-H9A",
+      authDomain: "mes-paiements-jeremy.firebaseapp.com",
+      projectId: "mes-paiements-jeremy",
+      storageBucket: "mes-paiements-jeremy.firebasestorage.app",
+      messagingSenderId: "1085958529684",
+      appId: "1:1085958529684:web:99e5514798cf0b8f098a81"
+    };
+    const statusEl = document.getElementById('authStatus');
+    const loginBtn = document.getElementById('loginBtn');
+    const signedIn = document.getElementById('signedIn');
+    const userEmail = document.getElementById('userEmail');
+    const apps = document.getElementById('apps');
+    try {
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      loginBtn.addEventListener('click', async () => {
+        statusEl.textContent = 'Ouverture de Google…';
+        loginBtn.disabled = true;
+        try {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          await auth.signInWithRedirect(provider);
+        } catch (e) {
+          statusEl.textContent = 'Connexion impossible : ' + (e.message || e.code || 'erreur inconnue');
+          loginBtn.disabled = false;
+        }
+      });
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await auth.signOut();
+      });
+      auth.getRedirectResult().catch(e => {
+        statusEl.textContent = 'Erreur de connexion : ' + (e.message || e.code || 'réessaie');
+      });
+      auth.onAuthStateChanged(user => {
+        const ok = !!user;
+        apps.hidden = !ok;
+        loginBtn.hidden = ok;
+        loginBtn.disabled = false;
+        signedIn.hidden = !ok;
+        if (ok) {
+          statusEl.textContent = 'Connexion réussie. Ton espace est déverrouillé.';
+          userEmail.textContent = user.email || 'Compte Google connecté';
+        } else {
+          statusEl.textContent = 'Connecte-toi avec ton compte Google pour ouvrir ton espace.';
+        }
+      });
+    } catch (e) {
+      statusEl.textContent = 'Firebase ne démarre pas : vérifie la configuration du projet.';
+      loginBtn.disabled = true;
+    }
+  </script>
 </body>
 </html>
