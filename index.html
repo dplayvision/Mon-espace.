@@ -43,7 +43,7 @@
       <p class="subtitle">Toutes tes applications au même endroit. Choisis celle que tu veux ouvrir.</p>
     </header>
     <section class="auth" aria-label="Connexion Google">
-      <p id="authStatus" class="status">Connecte-toi avec ton compte Google pour ouvrir ton espace.</p>
+      <p id="authStatus" class="status">Vérification de la connexion Google…</p>
       <button id="loginBtn" class="btn" type="button">Continuer avec Google</button>
       <div id="signedIn" class="authline" hidden>
         <span id="userEmail" class="status" style="margin:0"></span>
@@ -69,16 +69,32 @@
       messagingSenderId: "1085958529684",
       appId: "1:1085958529684:web:99e5514798cf0b8f098a81"
     };
+
     const statusEl = document.getElementById('authStatus');
     const loginBtn = document.getElementById('loginBtn');
     const signedIn = document.getElementById('signedIn');
     const userEmail = document.getElementById('userEmail');
     const apps = document.getElementById('apps');
+    let auth;
+
+    function showSignedIn(user) {
+      apps.hidden = !user;
+      loginBtn.hidden = !!user;
+      loginBtn.disabled = false;
+      signedIn.hidden = !user;
+      if (user) {
+        statusEl.textContent = 'Connexion réussie. Ton espace est déverrouillé.';
+        userEmail.textContent = user.email || 'Compte Google connecté';
+      } else {
+        statusEl.textContent = 'Connecte-toi avec ton compte Google pour ouvrir ton espace.';
+        userEmail.textContent = '';
+      }
+    }
 
     try {
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
 
       loginBtn.addEventListener('click', async () => {
         statusEl.textContent = 'Connexion à Google…';
@@ -86,17 +102,12 @@
         try {
           const provider = new firebase.auth.GoogleAuthProvider();
           await auth.signInWithPopup(provider);
-          statusEl.textContent = 'Compte Google connecté. Ouverture de ton espace…';
         } catch (e) {
           console.error('Connexion Google Mon espace:', e);
-          if (e.code === 'auth/popup-blocked' ||
-              e.code === 'auth/popup-closed-by-user' ||
-              e.code === 'auth/cancelled-popup-request' ||
-              e.code === 'auth/operation-not-supported-in-this-environment') {
+          if (['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(e.code)) {
             try {
-              const provider = new firebase.auth.GoogleAuthProvider();
               statusEl.textContent = 'Redirection vers Google…';
-              await auth.signInWithRedirect(provider);
+              await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
               return;
             } catch (redirectError) {
               console.error('Redirection Google Mon espace:', redirectError);
@@ -111,17 +122,7 @@
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {
         try { await auth.signOut(); }
-        catch (e) { statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code); }
-      });
-
-      // Recover the redirect result after returning from Google.
-      auth.getRedirectResult().then(result => {
-        if (result && result.user) {
-          statusEl.textContent = 'Connexion réussie. Ton espace est déverrouillé.';
-        }
-      }).catch(e => {
-        statusEl.textContent = 'Erreur de connexion : ' + (e.message || e.code || 'réessaie');
-        loginBtn.disabled = false;
+        catch (e) { statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code || 'erreur inconnue'); }
       });
 
       auth.getRedirectResult().catch(e => {
@@ -130,20 +131,9 @@
         loginBtn.disabled = false;
       });
 
-      auth.onAuthStateChanged(user => {
-        const ok = !!user;
-        apps.hidden = !ok;
-        loginBtn.hidden = ok;
-        loginBtn.disabled = false;
-        signedIn.hidden = !ok;
-        if (ok) {
-          statusEl.textContent = 'Connexion réussie. Ton espace est déverrouillé.';
-          userEmail.textContent = user.email || 'Compte Google connecté';
-        } else {
-          statusEl.textContent = 'Connecte-toi avec ton compte Google pour ouvrir ton espace.';
-        }
-      });
+      auth.onAuthStateChanged(showSignedIn);
     } catch (e) {
+      console.error('Firebase Mon espace:', e);
       statusEl.textContent = 'Firebase ne démarre pas : ' + (e.message || 'vérifie la configuration du projet.');
       loginBtn.disabled = true;
     }
