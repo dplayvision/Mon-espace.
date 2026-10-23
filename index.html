@@ -25,6 +25,7 @@
     .footer { text-align:center; color:#8a92a2; font-size:12px; padding:24px 0 2px; }
     .auth { background:white; border:1px solid var(--border); box-shadow:var(--shadow); border-radius:20px; padding:20px; margin:12px 0 20px; }
     .btn { border:0; border-radius:12px; background:#243b80; color:white; padding:13px 16px; font-size:15px; font-weight:750; width:100%; cursor:pointer; }
+    .btn:disabled { opacity:.65; cursor:wait; }
     .btn.secondary { background:#e9edff; color:#243b80; width:auto; padding:9px 13px; font-size:13px; }
     .authline { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
     .status { font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 13px; overflow-wrap:anywhere; }
@@ -43,8 +44,8 @@
       <p class="subtitle">Toutes tes applications au même endroit. Choisis celle que tu veux ouvrir.</p>
     </header>
     <section class="auth" aria-label="Connexion Google">
-      <p id="authStatus" class="status">Vérification de la connexion Google…</p>
-      <button id="loginBtn" class="btn" type="button">Continuer avec Google</button>
+      <p id="authStatus" class="status" aria-live="polite">Vérification de la connexion Google…</p>
+      <button id="loginBtn" class="btn" type="button" disabled>Vérification…</button>
       <div id="signedIn" class="authline" hidden>
         <span id="userEmail" class="status" style="margin:0"></span>
         <button id="logoutBtn" class="btn secondary" type="button">Se déconnecter</button>
@@ -75,7 +76,9 @@
     const signedIn = document.getElementById('signedIn');
     const userEmail = document.getElementById('userEmail');
     const apps = document.getElementById('apps');
+    const logoutBtn = document.getElementById('logoutBtn');
     let auth;
+    let loginInProgress = false;
 
     function showSignedIn(user) {
       apps.hidden = !user;
@@ -88,55 +91,80 @@
       } else {
         statusEl.textContent = 'Connecte-toi avec ton compte Google pour ouvrir ton espace.';
         userEmail.textContent = '';
+        loginBtn.textContent = 'Continuer avec Google';
       }
     }
 
-    try {
-      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
-
-      loginBtn.addEventListener('click', async () => {
-        statusEl.textContent = 'Connexion à Google…';
-        loginBtn.disabled = true;
-        try {
-          const provider = new firebase.auth.GoogleAuthProvider();
-          await auth.signInWithPopup(provider);
-        } catch (e) {
-          console.error('Connexion Google Mon espace:', e);
-          if (['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(e.code)) {
-            try {
-              statusEl.textContent = 'Redirection vers Google…';
-              await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
-              return;
-            } catch (redirectError) {
-              console.error('Redirection Google Mon espace:', redirectError);
-              statusEl.textContent = 'Connexion impossible : ' + (redirectError.message || redirectError.code || 'erreur inconnue');
-            }
-          } else {
-            statusEl.textContent = 'Connexion impossible : ' + (e.message || e.code || 'erreur inconnue');
+    async function startGoogleLogin() {
+      if (!auth || loginInProgress) return;
+      // Si Firebase a déjà restauré une session, ne pas ouvrir un deuxième popup.
+      if (auth.currentUser) {
+        showSignedIn(auth.currentUser);
+        return;
+      }
+      loginInProgress = true;
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Connexion…';
+      statusEl.textContent = 'Connexion à Google…';
+      try {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      } catch (e) {
+        console.error('Connexion Google Mon espace:', e);
+        if (['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(e.code)) {
+          try {
+            statusEl.textContent = 'Ouverture de Google…';
+            await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+            return;
+          } catch (redirectError) {
+            console.error('Redirection Google Mon espace:', redirectError);
+            statusEl.textContent = 'Connexion impossible : ' + (redirectError.message || redirectError.code || 'erreur inconnue');
           }
+        } else {
+          statusEl.textContent = 'Connexion impossible : ' + (e.message || e.code || 'erreur inconnue');
+        }
+      } finally {
+        loginInProgress = false;
+        loginBtn.disabled = false;
+        if (!auth.currentUser) loginBtn.textContent = 'Continuer avec Google';
+      }
+    }
+
+    async function init() {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        auth.onAuthStateChanged(showSignedIn, e => {
+          console.error('État de connexion Google Mon espace:', e);
+          statusEl.textContent = 'Vérification Google impossible : ' + (e.message || e.code || 'erreur inconnue');
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Continuer avec Google';
+        });
+        try {
+          const result = await auth.getRedirectResult();
+          if (result && result.user) statusEl.textContent = 'Connexion Google réussie.';
+        } catch (e) {
+          console.error('Résultat de redirection Google Mon espace:', e);
+          statusEl.textContent = 'Retour Google impossible : ' + (e.message || e.code || 'erreur inconnue');
+        }
+        if (!auth.currentUser) {
+          loginBtn.textContent = 'Continuer avec Google';
           loginBtn.disabled = false;
         }
-      });
-
-      document.getElementById('logoutBtn').addEventListener('click', async () => {
-        try { await auth.signOut(); }
-        catch (e) { statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code || 'erreur inconnue'); }
-      });
-
-      auth.getRedirectResult().catch(e => {
-        console.error('Résultat de redirection Google Mon espace:', e);
-        statusEl.textContent = 'Retour Google impossible : ' + (e.message || e.code || 'erreur inconnue');
-        loginBtn.disabled = false;
-      });
-
-      auth.onAuthStateChanged(showSignedIn);
-    } catch (e) {
-      console.error('Firebase Mon espace:', e);
-      statusEl.textContent = 'Firebase ne démarre pas : ' + (e.message || 'vérifie la configuration du projet.');
-      loginBtn.disabled = true;
+      } catch (e) {
+        console.error('Firebase Mon espace:', e);
+        statusEl.textContent = 'Firebase ne démarre pas : ' + (e.message || 'vérifie la configuration du projet.');
+        loginBtn.disabled = true;
+      }
     }
+
+    loginBtn.addEventListener('click', startGoogleLogin);
+    logoutBtn.addEventListener('click', async () => {
+      try { await auth.signOut(); }
+      catch (e) { statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code || 'erreur inconnue'); }
+    });
+    init();
   </script>
 </body>
 </html>
