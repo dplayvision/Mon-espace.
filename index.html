@@ -29,6 +29,7 @@
     .btn.secondary { background:#e9edff; color:#243b80; width:auto; padding:9px 13px; font-size:13px; }
     .authline { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
     .status { font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 13px; overflow-wrap:anywhere; }
+    .hint { font-size:12px; color:var(--muted); line-height:1.5; margin:13px 0 0; }
     [hidden] { display:none !important; }
     @media (min-width:620px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .app { min-height:176px; padding:19px; } }
     @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
@@ -50,6 +51,7 @@
         <span id="userEmail" class="status" style="margin:0"></span>
         <button id="logoutBtn" class="btn secondary" type="button">Se déconnecter</button>
       </div>
+      <p class="hint">La connexion Google donne accès à ce tableau de bord. Chaque application conserve sa propre synchronisation des données.</p>
     </section>
     <nav id="apps" class="grid" aria-label="Mes applications" hidden>
       <a class="app" href="https://dplayvision.github.io/Mes-paiements-/"><span class="icon blue" aria-hidden="true">💳</span><span class="app-title">Mes paiements</span><span class="app-desc">Paiements, domiciliations et synthèses</span><span class="arrow" aria-hidden="true">↗</span></a>
@@ -68,7 +70,7 @@
       projectId: "mes-paiements-jeremy",
       storageBucket: "mes-paiements-jeremy.firebasestorage.app",
       messagingSenderId: "1085958529684",
-      appId: "1:1085958529684:web:99e5514798cf0b8f098a81"
+      appId: "1:108595852968:web:99e5514798cf0b8f098a81"
     };
 
     const statusEl = document.getElementById('authStatus');
@@ -81,12 +83,13 @@
     let loginInProgress = false;
 
     function showSignedIn(user) {
-      apps.hidden = !user;
-      loginBtn.hidden = !!user;
+      const connected = !!user;
+      apps.hidden = !connected;
+      loginBtn.hidden = connected;
       loginBtn.disabled = false;
-      signedIn.hidden = !user;
-      if (user) {
-        statusEl.textContent = 'Connexion réussie. Ton espace est déverrouillé.';
+      signedIn.hidden = !connected;
+      if (connected) {
+        statusEl.textContent = 'Connexion Google réussie. Ton espace est déverrouillé.';
         userEmail.textContent = user.email || 'Compte Google connecté';
       } else {
         statusEl.textContent = 'Connecte-toi avec ton compte Google pour ouvrir ton espace.';
@@ -97,7 +100,6 @@
 
     async function startGoogleLogin() {
       if (!auth || loginInProgress) return;
-      // Si Firebase a déjà restauré une session, ne pas ouvrir un deuxième popup.
       if (auth.currentUser) {
         showSignedIn(auth.currentUser);
         return;
@@ -106,15 +108,22 @@
       loginBtn.disabled = true;
       loginBtn.textContent = 'Connexion…';
       statusEl.textContent = 'Connexion à Google…';
+      const provider = new firebase.auth.GoogleAuthProvider();
       try {
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-        await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        await auth.signInWithPopup(provider);
       } catch (e) {
         console.error('Connexion Google Mon espace:', e);
-        if (['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'].includes(e.code)) {
+        const redirectCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/operation-not-supported-in-this-environment'
+        ];
+        if (redirectCodes.includes(e.code)) {
           try {
             statusEl.textContent = 'Ouverture de Google…';
-            await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+            await auth.signInWithRedirect(provider);
             return;
           } catch (redirectError) {
             console.error('Redirection Google Mon espace:', redirectError);
@@ -135,12 +144,15 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-        auth.onAuthStateChanged(showSignedIn, e => {
+
+        // Observe l'état de connexion dès que Firebase restaure la session.
+        auth.onAuthStateChanged(user => showSignedIn(user), e => {
           console.error('État de connexion Google Mon espace:', e);
           statusEl.textContent = 'Vérification Google impossible : ' + (e.message || e.code || 'erreur inconnue');
           loginBtn.disabled = false;
           loginBtn.textContent = 'Continuer avec Google';
         });
+
         try {
           const result = await auth.getRedirectResult();
           if (result && result.user) statusEl.textContent = 'Connexion Google réussie.';
@@ -148,6 +160,7 @@
           console.error('Résultat de redirection Google Mon espace:', e);
           statusEl.textContent = 'Retour Google impossible : ' + (e.message || e.code || 'erreur inconnue');
         }
+
         if (!auth.currentUser) {
           loginBtn.textContent = 'Continuer avec Google';
           loginBtn.disabled = false;
@@ -161,8 +174,15 @@
 
     loginBtn.addEventListener('click', startGoogleLogin);
     logoutBtn.addEventListener('click', async () => {
-      try { await auth.signOut(); }
-      catch (e) { statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code || 'erreur inconnue'); }
+      if (!auth) return;
+      logoutBtn.disabled = true;
+      try {
+        await auth.signOut();
+      } catch (e) {
+        statusEl.textContent = 'Déconnexion impossible : ' + (e.message || e.code || 'erreur inconnue');
+      } finally {
+        logoutBtn.disabled = false;
+      }
     });
     init();
   </script>
